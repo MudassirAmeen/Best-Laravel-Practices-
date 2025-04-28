@@ -75,9 +75,24 @@ abstract class BaseResource extends JsonResource
         // Map relations only if loaded
         $rels = collect(static::$relations)
             ->filter(fn(array $cfg, string $rel) => $this->resource->relationLoaded($rel))
-            ->mapWithKeys(fn(array $cfg, string $rel) => [
-                $cfg['key'] => new $cfg['resource']($this->{$rel})
-            ])
+            ->mapWithKeys(function (array $cfg, string $rel)
+            {
+                $related = $this->{$rel};
+                // Check if the relation ship has a collection of models
+                if ($related instanceof \Illuminate\Database\Eloquent\Collection)
+                {
+                    return [$cfg['key'] => $cfg['resource']::collection($related)];
+                }
+                // Check if the relation ship has only one model
+                elseif ($related instanceof \Illuminate\Database\Eloquent\Model)
+                {
+                    return [$cfg['key'] => new $cfg['resource']($related)];
+                }
+                else
+                {
+                    return [$cfg['key'] => null];
+                }
+            })
             ->toArray();
 
         // Merge everything into final resource array
